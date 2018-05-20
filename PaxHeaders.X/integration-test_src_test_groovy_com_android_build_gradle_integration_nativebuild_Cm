@@ -1,0 +1,1 @@
+120 path=integration-test/src/test/groovy/com/android/build/gradle/integration/nativebuild/CmakeBasicProjectTest.groovy

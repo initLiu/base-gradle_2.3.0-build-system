@@ -1,0 +1,23 @@
+apply plugin: 'com.android.library'
+
+android {
+  compileSdkVersion rootProject.latestCompileSdk
+  buildToolsVersion = rootProject.buildToolsVersion
+
+  defaultConfig {
+    minSdkVersion 4
+  }
+
+  buildTypes {
+    debug {
+      // needed for the test app.
+      multiDexEnabled = true
+    }
+  }
+
+  packagingOptions.exclude '.readme'
+}
+
+dependencies {
+  compile fileTree(dir: 'libs', include: '*.jar')
+}

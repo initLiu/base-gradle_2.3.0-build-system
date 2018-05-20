@@ -1,0 +1,21 @@
+apply from: "../commonHeader.gradle"
+buildscript { apply from: "../commonBuildScript.gradle" }
+apply from: "../commonLocalRepo.gradle"
+
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion rootProject.ext.latestCompileSdk
+    buildToolsVersion = rootProject.ext.buildToolsVersion
+	
+    buildTypes {
+        debug {
+            testCoverageEnabled true
+        }
+    }
+}
+
+dependencies {
+    compile 'com.jakewharton:butterknife:7.0.1'
+    annotationProcessor 'com.jakewharton:butterknife:7.0.1'
+}

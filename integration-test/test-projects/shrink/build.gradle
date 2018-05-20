@@ -1,0 +1,47 @@
+apply from: "../commonHeader.gradle"
+buildscript { apply from: "../commonBuildScript.gradle" }
+
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion rootProject.latestCompileSdk
+    buildToolsVersion rootProject.buildToolsVersion
+
+    defaultConfig {
+        versionCode 12
+        versionName "2.0"
+        minSdkVersion 16
+        targetSdkVersion 16
+    }
+
+    buildTypes {
+        debug {
+            shrinkResources false
+            minifyEnabled false
+        }
+        proguardNoShrink {
+            shrinkResources false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        release {
+            shrinkResources true
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    lintOptions {
+        disable 'IconLauncherFormat'
+    }
+
+    dexOptions {
+        incremental false
+    }
+}
+
+dependencies {
+    compile project(':lib')
+    compile "com.android.support:support-annotations:${project.supportLibVersion}"
+    compile "com.android.support:support-v4:${project.supportLibVersion}"
+}

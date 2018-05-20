@@ -1,0 +1,24 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion rootProject.latestCompileSdk
+    buildToolsVersion = rootProject.buildToolsVersion
+
+    publishNonDefault true
+
+    defaultConfig {
+        minSdkVersion 16
+    }
+
+    buildTypes {
+        minified.initWith(buildTypes.debug)
+        minified {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt')
+        }
+    }
+}
+
+dependencies {
+    compile project(':lib')
+}

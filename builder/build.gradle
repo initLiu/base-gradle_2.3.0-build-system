@@ -1,0 +1,109 @@
+apply plugin: 'java'
+apply plugin: 'clone-artifacts'
+apply plugin: 'jacoco-tools-base'
+
+dependencies {
+    compile project(':base:builder-model')
+    compile project(':base:builder-test-api')
+
+    compile project(':base:sdklib')
+    compile project(':base:sdk-common')
+    compile project(':base:common')
+    compile project(':base:manifest-merger')
+    compile project(':base:ddmlib')
+
+    compile project(':base:jack:jack-api')
+    compile project(':base:jack:jill-api')
+
+    compile project(':analytics-library:protos')
+    compile project(':analytics-library:shared')
+    compile project(':analytics-library:tracker')
+
+    compile libs.javawriter
+    compile libs.bouncycastle_pkix
+    compile libs.bouncycastle_prov
+    compile libs.asm
+    compile libs.asm_tree
+
+    testCompile libs.junit
+    testCompile libs.mockito_all
+    testCompile libs.truth
+    testCompile libs.equalsverifier
+    testCompile project(':base:testutils')
+}
+
+test {
+    maxParallelForks = Runtime.runtime.availableProcessors() / 2
+}
+
+group = 'com.android.tools.build'
+archivesBaseName = 'builder'
+version = rootProject.ext.buildVersion
+
+project.ext.pomName = 'Android Builder library'
+project.ext.pomDesc = 'Library to build Android applications.'
+
+apply from: "$rootDir/buildSrc/base/publish.gradle"
+apply from: "$rootDir/buildSrc/base/bintray.gradle"
+apply from: "$rootDir/buildSrc/base/javadoc.gradle"
+
+def generated = new File("${project.buildDir}/generated/resources")
+
+sourceSets {
+    main {
+        resources {
+            srcDir generated
+        }
+    }
+}
+
+task copyVersionProperties(type: Copy) {
+    from project.file("$rootDir/buildSrc/base/version.properties")
+    into project.file("$generated/com/android/builder")
+}
+
+tasks.compileJava.dependsOn copyVersionProperties
+
+jar.manifest.attributes("Builder-Version": version)
+
+configurations {
+    provided
+    sourcesProvided
+}
+
+dependencies {
+    provided(project(':base:profile')) {
+        transitive = false
+    }
+    sourcesProvided(project(path:':base:profile', configuration:'sourcesOnly')) {
+        transitive = false
+    }
+
+    provided(project(':base:apkzlib')) {
+        transitive = false
+    }
+    sourcesProvided(project(path:':base:apkzlib', configuration:'sourcesOnly')) {
+        transitive = false
+    }
+}
+
+sourceSets.main.compileClasspath += configurations.provided
+sourceSets.test.compileClasspath += configurations.provided
+sourceSets.test.runtimeClasspath += configurations.provided
+tasks.compileJava.dependsOn(configurations.provided)
+tasks.sourcesJar.dependsOn(configurations.sourcesProvided)
+
+tasks.jar {
+    from({
+        configurations.provided.collect({zipTree(it)})
+    })
+}
+
+tasks.sourcesJar {
+    from({
+        configurations.sourcesProvided.collect({zipTree(it)})
+    })
+}
+javadoc {
+    classpath += configurations.provided
+}

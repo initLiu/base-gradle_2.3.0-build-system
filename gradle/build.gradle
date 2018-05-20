@@ -1,0 +1,72 @@
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+apply plugin: 'groovy'
+apply plugin: 'clone-artifacts'
+apply plugin: 'idea'
+apply plugin: 'jacoco-tools-base'
+apply plugin: 'license-report'
+
+dependencies {
+    compile project(':base:gradle-core')
+    compile gradleApi()
+
+    testCompile project(':base:project-test-lib')
+    testCompile project(':base:testutils')
+    testCompile libs.junit
+    testCompile libs.truth
+}
+
+group = 'com.android.tools.build'
+archivesBaseName = 'gradle'
+version = rootProject.ext.buildVersion
+
+project.ext.pomName = 'Gradle Plug-in for Android'
+project.ext.pomDesc = 'Gradle plug-in to build Android applications.'
+
+apply from: "$rootDir/buildSrc/base/publish.gradle"
+apply from: "$rootDir/buildSrc/base/bintray.gradle"
+
+jar.manifest.attributes("Plugin-Version": version)
+jar.manifest.attributes("Inception-Date": DateTimeFormatter.ISO_LOCAL_DATE.format(LocalDate.now()));
+
+def generated = new File("${project.buildDir}/generated/resources")
+sourceSets.main.resources.srcDir generated
+
+task copyVersionProperties(type: Copy) {
+    from project.file("$rootDir/buildSrc/base/version.properties")
+    into project.file("$generated/com/android/build/gradle/internal")
+}
+
+tasks.compileJava.dependsOn copyVersionProperties
+
+test {
+    environment("CUSTOM_REPO", rootProject.file("../out/repo"))
+
+    testLogging {
+        events "failed"
+    }
+
+    maxParallelForks = Runtime.runtime.availableProcessors() / 2
+}
+
+javadoc {
+    exclude     "**/internal/**"
+
+    options.docTitle "Gradle Plugin for Android"
+    options.header ""
+    options.footer "Copyright (C) 2012 The Android Open Source Project"
+}
+
+task javadocJar(type: Jar, dependsOn:javadoc) {
+    classifier  'javadoc'
+    from        javadoc.destinationDir
+
+}
+
+// Only package JavaDoc if using --init-script=buildSrc/base/release.gradle
+if (project.hasProperty("release")) {
+  artifacts {
+    archives javadocJar
+  }
+}

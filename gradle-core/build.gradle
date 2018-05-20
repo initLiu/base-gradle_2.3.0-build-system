@@ -1,0 +1,161 @@
+apply plugin: 'java'
+apply plugin: 'jacoco-tools-base'
+apply plugin: 'clone-artifacts'
+apply plugin: 'antlr'
+apply plugin: 'com.google.protobuf'
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.0.0'
+    }
+}
+
+configurations {
+    provided
+    includeInJar
+}
+
+// Incremental update test support
+File classesDir = new File(project.buildDir, "classes/incremental-test")
+File baseClasses = new File(classesDir, "base")
+File baseInstrumentedClasses = new File(classesDir, "baseInstrumented")
+
+sourceSets {
+    main {
+        java.srcDirs += 'src/fromGradle/java'
+        resources.srcDirs = ['src/main/resources', 'src/fromGradle/resources']
+        compileClasspath += configurations.provided
+    }
+
+    test {
+        compileClasspath += files(baseClasses)
+        runtimeClasspath += files(baseInstrumentedClasses)
+    }
+}
+
+dependencies {
+    compile project(':base:builder')
+    compile project(':base:lint')
+    // TODO: Switch to remote dependency once the empty deprecated transform-api is published
+    compile project(':base:transform-api')
+    compile project(':base:gradle-api')
+    compile project(':dataBinding:compilerCommon')
+    compile libs.asm
+    compile libs.asm_commons
+    compile libs.proguard
+    compile libs.jacoco_core
+    compile libs.jacoco_report
+    compile libs.jopt
+    compile libs.protobuf
+    testCompile project(':base:instant-run:instant-run-annotations')
+    testCompile project(':base:instant-run:instant-run-runtime')
+
+
+    // Add gradleApi to classpath for compilation, but use provided configuration so that groovy is
+    // not exposed as a runtime dependency.
+    provided gradleApi()
+
+    // Exclude plugins/core-* to avoiding adding Gradle's ecj implementation to the classpath
+    testCompile fileTree(
+            dir:file("$rootProject.ext.androidHostOut/gradle-dist-link/lib"),
+            includes: ["*", "plugins/gradle*"])
+
+    includeInJar project(':base:instant-run:instant-run-server')
+
+    antlr libs.antlr3
+
+    testCompile libs.junit
+    testCompile libs.truth
+    testCompile libs.mockito_core
+    testCompile libs.guava
+	testCompile libs.equalsverifier
+    testCompile project(':base:project-test-lib')
+    testCompile project(':base:testutils')
+    testCompile libs.jsoup
+}
+
+jar {
+    into('instant-run') {
+        from configurations.includeInJar
+    }
+}
+
+group = 'com.android.tools.build'
+archivesBaseName = 'gradle-core'
+version = rootProject.ext.buildVersion
+
+project.ext.pomName = 'Core Library for Android Gradle Plug-in'
+project.ext.pomDesc = 'Core library to build Android Gradle plugin.'
+
+apply from: "$rootDir/buildSrc/base/publish.gradle"
+apply from: "$rootDir/buildSrc/base/bintray.gradle"
+
+test {
+    environment("CUSTOM_REPO", rootProject.file("../out/repo"))
+
+    testLogging {
+        events "failed"
+    }
+
+    maxParallelForks = Runtime.runtime.availableProcessors() / 2
+}
+
+javadoc {
+    exclude     "**/internal/**"
+
+    options.docTitle "Gradle Plugin for Android"
+    options.header ""
+    options.footer "Copyright (C) 2012 The Android Open Source Project"
+}
+
+task javadocJar(type: Jar, dependsOn:javadoc) {
+    classifier  'javadoc'
+    from        javadoc.destinationDir
+
+}
+
+tasks.withType(Javadoc) {
+    classpath += configurations.provided
+}
+
+// Only package JavaDoc if using --init-script=buildSrc/base/release.gradle
+if (project.hasProperty("release")) {
+    artifacts {
+        archives javadocJar
+    }
+}
+
+
+// Package instant run instrumentation inside of gradle-core.
+configurations {
+    subsumedProvided
+    sourcesSubsumedProvided
+}
+dependencies {
+    subsumedProvided(project(':base:instant-run-instrumentation')) {
+        transitive = false
+    }
+    sourcesSubsumedProvided(project(path:':base:instant-run-instrumentation', configuration:'sourcesOnly')) {
+        transitive = false
+    }
+}
+sourceSets.main.compileClasspath += configurations.subsumedProvided
+sourceSets.test.compileClasspath += configurations.subsumedProvided
+sourceSets.test.runtimeClasspath += configurations.subsumedProvided
+tasks.compileJava.dependsOn(configurations.subsumedProvided)
+tasks.sourcesJar.dependsOn(configurations.sourcesSubsumedProvided)
+tasks.jar {
+    from({ zipTree(configurations.subsumedProvided.singleFile)})
+}
+tasks.sourcesJar {
+    from({zipTree(configurations.sourcesSubsumedProvided.singleFile)})
+}
+javadoc {
+    classpath += configurations.subsumedProvided
+}
+// End Package instant run instrumentation inside of gradle-core.
+
+// Incremental update test support
+javadoc {
+    classpath += configurations.provided
+}
