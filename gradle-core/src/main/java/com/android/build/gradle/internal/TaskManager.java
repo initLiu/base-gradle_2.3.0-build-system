@@ -2917,6 +2917,8 @@ public abstract class TaskManager {
                 task -> {
                     variantData.assetGenTask = task;
                 }));
+
+        if (!variantData.getType().isForTesting()
                 && variantData.getVariantConfiguration().getBuildType().isTestCoverageEnabled()) {
             scope.setCoverageReportTask(androidTasks.create(tasks,
                     scope.getTaskName("create", "CoverageReport"),
